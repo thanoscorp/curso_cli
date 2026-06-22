@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Consola — CLI para Dummies</title>
+<style>
+  :root{
+    --bg:#0c0c0c; --bg-ps:#012456; --green:#00ff7f; --white:#ffffff;
+    --yellow:#ffeb3b; --red:#ff5252; --gray:#9ca3af; --blue:#56b6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#1a1a1a;font-family:'Segoe UI',system-ui,sans-serif}
+  .bar{display:flex;align-items:center;gap:.5rem;padding:.4rem .7rem;background:#2a2a2a;color:#ccc;font-size:12px;border-bottom:1px solid #333}
+  .bar .dot{width:11px;height:11px;border-radius:50%}
+  .dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+  .bar .title{margin-left:.6rem;font-weight:600;color:#ddd}
+  .bar .switch{margin-left:auto;display:flex;gap:.3rem}
+  .bar button{background:#333;color:#ddd;border:1px solid #444;border-radius:5px;padding:.25rem .6rem;cursor:pointer;font-size:11px}
+  .bar button.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+  #term{margin:0;padding:1rem 1.1rem;height:calc(100% - 34px);overflow-y:auto;font-family:'Cascadia Code','Consolas',monospace;font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;cursor:text}
+  #term.cmd{background:var(--bg);color:var(--white)}
+  #term.ps{background:var(--bg-ps);color:var(--white)}
+  .out{white-space:pre-wrap}
+  .err{color:var(--red)} .ok{color:var(--green)} .dim{color:var(--gray)} .hi{color:var(--yellow)} .info{color:var(--blue)}
+  .dir{color:#56b6ff;font-weight:600}
+  .exe{color:#ff79c6}
+  .prompt{color:var(--green);font-weight:600}
+  .in{outline:none;caret-color:var(--green)}
+  footer{position:fixed;bottom:0;left:0;right:0;font-size:10.5px;color:#666;background:#1a1a1a;padding:.25rem .8rem;text-align:right;border-top:1px solid #2a2a2a}
+  ::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#444;border-radius:6px}::-webkit-scrollbar-track{background:#1a1a1a}
+</style>
+</head>
+<body>
+<div class="bar">
+  <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+  <span class="title">Simulador de Consola — CMD / PowerShell</span>
+  <div class="switch">
+    <button id="bCmd" class="active" onclick="setMode('cmd')">CMD</button>
+    <button id="bPs" onclick="setMode('ps')">PowerShell</button>
+    <button onclick="cls()" title="Limpiar">cls</button>
+  </div>
+</div>
+<div id="term" class="cmd" onclick="focusInput()"></div>
+<footer>Creado por Ing Richard Oliveros — Thanos Corp SAS</footer>
+
+<script>
+const term=document.getElementById('term');
+let mode='cmd';
+let history=[]; let hIdx=-1;
+let cwd=['C:','Users','Alumno'];
+// Virtual filesystem
+const FS={
+  type:'dir', children:{
+    'C:':{type:'dir', children:{
+      'Users':{type:'dir', children:{
+        'Alumno':{type:'dir', children:{
+          'Documentos':{type:'dir', children:{
+            'bienvenida.txt':{type:'file', content:'Hola! Este es un archivo de texto.\nEstas dentro de C:\\Users\\Alumno\\Documentos\nPractica los comandos: dir, cd, type, copy.'},
+            'apuntes.txt':{type:'file', content:'Apuntes de la clase 1:\n- pwd sirve en PowerShell\n- dir sirve en CMD\n- cd funciona en ambas.'}
+          }},
+          'Descargas':{type:'dir', children:{
+            'instalador.exe':{type:'file',content:'[binario simulado]'},
+            'reporte.pdf':{type:'file',content:'%PDF-1.4 (archivo PDF simulado)'}
+          }},
+          'Proyectos':{type:'dir', children:{
+            'claude.md':{type:'file',content:'# Claude Code\n\nPara iniciar un agente de IA en la terminal:\n  ollama serve\n  ollama run glm-5.2:cloud\n  claude\n\nRecuerda: la terminal es tu GPS + volante.'},
+            'app':{type:'dir', children:{
+              'main.js':{type:'file',content:'console.log("Hola desde la app");'}
+            }}
+          }},
+          'Imagenes':{type:'dir', children:{
+            'foto.png':{type:'file',content:'[imagen PNG simulada]'}
+          }}
+        }}
+      }},
+      'Windows':{type:'dir', children:{'System32':{type:'dir', children:{'cmd.exe':{type:'file',content:'[sistema]'}}}}}
+    }}
+  }
+};
+
+function nodeAt(pathArr){
+  let n=FS; for(const p of pathArr){ if(!n||n.type!=='dir') return null; n=n.children[p]; if(!n) return null; }
+  return n;
+}
+function cwdNode(){ return nodeAt(cwd); }
+function pathStr(){ return cwd.join('\\')+'>'; }
+function psPath(){ return 'PS '+cwd.join('\\'); }
+function promptStr(){ return mode==='cmd'? pathStr() : psPath()+'> '; }
+
+function print(html='',cls=''){
+  const d=document.createElement('div'); d.className='out'+(cls?(' '+cls):''); d.innerHTML=html; term.appendChild(d);
+}
+function raw(text,cls=''){ print(esc(text),cls); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function cls(){ term.innerHTML=''; renderBanner(); }
+
+function renderBanner(){
+  if(mode==='cmd'){
+    raw('Microsoft Windows [Version 10.0.22631.3737]\n(c) Microsoft Corporation. Todos los derechos reservados.\n','dim');
+  }else{
+    raw('Windows PowerShell\nCopyright (C) Microsoft Corporation. Todos los derechos reservados.\n','dim');
+    raw('Pruebe la nueva PowerShell multiplataforma https://aka.ms/pscore6\n','dim');
+  }
+  raw('');
+}
+
+function renderInputLine(prefill=''){
+  const line=document.createElement('div');
+  line.className='in-line';
+  line.innerHTML='<span class="prompt">'+esc(promptStr())+'</span><span class="in" contenteditable="true" spellcheck="false" id="in"></span>';
+  term.appendChild(line);
+  const inp=line.querySelector('#in');
+  inp.textContent=prefill;
+  term.scrollTop=term.scrollHeight;
+  inp.focus();
+  placeCaretEnd(inp);
+  inp.addEventListener('keydown',onKey);
+  inp.addEventListener('beforeinput',e=>{ if(e.inputType==='insertParagraph') e.preventDefault(); });
+}
+function placeCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+function commitInput(){
+  const inp=document.getElementById('in');
+  if(!inp) return;
+  const text=inp.textContent;
+  // replace editable with static
+  const line=inp.parentElement;
+  const staticLine=document.createElement('div');
+  staticLine.className='out';
+  staticLine.innerHTML='<span class="prompt">'+esc(promptStr())+'</span>'+esc(text);
+  line.replaceWith(staticLine);
+  if(text.trim()){ history.push(text); }
+  hIdx=history.length;
+  run(text);
+}
+
+function focusInput(){ const inp=document.getElementById('in'); if(inp) inp.focus(); }
+
+function onKey(e){
+  if(e.key==='Enter'){ e.preventDefault(); commitInput(); renderInputLine(''); return; }
+  if(e.key==='ArrowUp'){ e.preventDefault(); if(history.length&&hIdx>0){ hIdx--; const inp=e.target; inp.textContent=history[hIdx]; placeCaretEnd(inp);} return; }
+  if(e.key==='ArrowDown'){ e.preventDefault(); if(hIdx<history.length-1){ hIdx++; const inp=e.target; inp.textContent=history[hIdx]; placeCaretEnd(inp);} else { hIdx=history.length; e.target.textContent=''; } return; }
+  if(e.key==='Tab'){ e.preventDefault(); autocomplete(e.target); }
+  if(e.key==='l'&&e.ctrlKey){ e.preventDefault(); cls(); }
+  if(e.key==='c'&&e.ctrlKey){ e.preventDefault(); const inp=e.target; inp.textContent=''; }
+}
+
+function autocomplete(inp){
+  const text=inp.textContent;
+  const parts=text.split(/\s+/);
+  if(parts.length<=1){
+    // complete commands
+    const cmds=Object.keys(COMMANDS);
+    const m=cmds.filter(c=>c.startsWith(parts[0].toLowerCase()));
+    if(m.length===1){ parts[0]=m[0]; inp.textContent=parts.join(' '); placeCaretEnd(inp); }
+  }else{
+    const frag=parts[parts.length-1].toLowerCase();
+    const node=cwdNode(); if(!node) return;
+    const m=Object.keys(node.children).filter(n=>n.toLowerCase().startsWith(frag));
+    if(m.length===1){ parts[parts.length-1]=m[0]; inp.textContent=parts.join(' '); placeCaretEnd(inp); }
+  }
+}
+
+/* ---------- Commands ---------- */
+const COMMANDS={
+  help(){ raw('COMANDOS DISPONIBLES:','hi'); raw('  pwd                Muestra donde estas parado (PowerShell)','ok'); raw('  cd [carpeta]       Cambia de carpeta. cd .. sube · cd \\ va a la raiz','ok'); raw('  dir / ls           Lista archivos y carpetas de la carpeta actual','ok'); raw('  cls / clear         Limpia la pantalla','ok'); raw('  echo <texto>       Repite el texto · echo texto > archivo.txt crea/escribe','ok'); raw('  type / cat <arch>  Muestra el contenido de un archivo','ok'); raw('  mkdir <carpeta>    Crea una carpeta','ok'); raw('  rmdir <carpeta>    Borra una carpeta vacia','ok'); raw('  del <archivo>      Borra un archivo','ok'); raw('  copy <a> <b>       Copia un archivo','ok'); raw('  move <a> <b>       Mueve o renombra','ok'); raw('  ren <a> <b>        Renombra un archivo','ok'); raw('  tree               Muestra el arbol de carpetas','ok'); raw('  find "txt" arch    Busca texto dentro de un archivo','ok'); raw('  ver                Version de Windows','ok'); raw('  date / time        Fecha y hora actuales','ok'); raw('  history            Historial de comandos','ok'); raw('  ollama list        Modelos de IA instalados','ok'); raw('  ollama run <mod>   Inicia un modelo de IA','ok'); raw('  ollama serve       Levanta el servidor local de Ollama','ok'); raw('  claude             Abre Claude Code CLI','ok'); raw('  exit               Cierra la sesion','ok'); raw('  TIP: Flecha arriba = repetir comandos · Tab = autocompletar · Ctrl+L = limpiar','dim'); },
+  '?'(){ COMMANDS.help(); },
+  pwd(){ raw(cwd.join('\\')); },
+  cd(args){
+    if(!args[0]){ if(mode==='cmd') raw(cwd.join('\\')); else raw(cwd.join('\\')); return; }
+    const t=args[0];
+    if(t==='\\'||t==='/'){ cwd=['C:']; return; }
+    if(t==='..'){ if(cwd.length>2) cwd.pop(); return; }
+    if(t==='.'){ return; }
+    const node=cwdNode(); if(!node){raw('No se encuentra la ruta.','err');return;}
+    // absolute path
+    if(/^[A-Za-z]:[\\\/]/.test(t)){
+      const parts=t.replace(/\//g,'\\').split('\\').filter(Boolean);
+      const n=nodeAt(parts); if(n&&n.type==='dir'){ cwd=parts; return; }
+      raw('El sistema no puede encontrar la ruta especificada: '+t,'err'); return;
+    }
+    const child=node.children[t];
+    if(child&&child.type==='dir'){ cwd.push(t); return; }
+    raw('El sistema no puede encontrar la ruta especificada.','err');
+  },
+  dir(){ listDir(); },
+  ls(){ listDir(); },
+  cls(){ cls(); },
+  clear(){ cls(); },
+  echo(args,rawfull){
+    const full=args.join(' ');
+    const m=full.match(/^(.*?)\s*>\s*(\S+)$/);
+    if(m){
+      const content=m[1].replace(/^["']|["']$/g,'');
+      const node=cwdNode(); const name=m[2];
+      node.children[name]={type:'file',content:content+'\n'};
+      return;
+    }
+    raw(full.replace(/^["']|["']$/g,''));
+  },
+  type(args){ readFile(args[0],'type'); },
+  cat(args){ readFile(args[0],'cat'); },
+  mkdir(args){
+    if(!args[0]){raw('Falta el nombre de la carpeta.','err');return;}
+    const node=cwdNode(); if(node.children[args[0]]){raw('Ya existe.','err');return;}
+    node.children[args[0]]={type:'dir',children:{}};
+    raw('','ok');
+  },
+  md(args){ COMMANDS.mkdir(args); },
+  rmdir(args){
+    if(!args[0]){raw('Falta el nombre.','err');return;}
+    const node=cwdNode(); const c=node.children[args[0]];
+    if(!c){raw('No existe.','err');return;}
+    if(c.type!=='dir'){raw('No es una carpeta.','err');return;}
+    if(Object.keys(c.children).length){raw('La carpeta no esta vacia. (rmdir solo borra carpetas vacias)','err');return;}
+    delete node.children[args[0]];
+  },
+  rd(args){ COMMANDS.rmdir(args); },
+  del(args){
+    if(!args[0]){raw('Falta el archivo.','err');return;}
+    const node=cwdNode(); const c=node.children[args[0]];
+    if(!c){raw('No se pudo encontrar el archivo.','err');return;}
+    if(c.type!=='file'){raw('No es un archivo.','err');return;}
+    delete node.children[args[0]];
+  },
+  rm(args){ COMMANDS.del(args); },
+  copy(args){
+    if(args.length<2){raw('Uso: copy <origen> <destino>','err');return;}
+    const node=cwdNode(); const src=node.children[args[0]];
+    if(!src){raw('El sistema no encuentra el archivo: '+args[0],'err');return;}
+    if(src.type!=='file'){raw('No es un archivo.','err');return;}
+    node.children[args[1]]={type:'file',content:src.content};
+    raw('        1 archivo(s) copiado(s).','ok');
+  },
+  cp(args){ COMMANDS.copy(args); },
+  move(args){
+    if(args.length<2){raw('Uso: move <origen> <destino>','err');return;}
+    const node=cwdNode(); const src=node.children[args[0]];
+    if(!src){raw('No existe: '+args[0],'err');return;}
+    node.children[args[1]]=src; delete node.children[args[0]];
+    raw('        1 archivo(s) movido(s).','ok');
+  },
+  mv(args){ COMMANDS.move(args); },
+  ren(args){
+    if(args.length<2){raw('Uso: ren <actual> <nuevo>','err');return;}
+    const node=cwdNode(); const src=node.children[args[0]];
+    if(!src){raw('No existe.','err');return;}
+    node.children[args[1]]=src; delete node.children[args[0]];
+  },
+  tree(){
+    function walk(node,prefix,depth){
+      if(depth>3) return;
+      const names=Object.keys(node.children).sort();
+      names.forEach((n,i)=>{
+        const last=i===names.length-1;
+        raw(prefix+(last?'└── ':'├── ')+n+(node.children[n].type==='dir'?'\\':''), node.children[n].type==='dir'?'dir':'');
+        if(node.children[n].type==='dir') walk(node.children[n],prefix+(last?'    ':'│   '),depth+1);
+      });
+    }
+    raw(cwd.join('\\'),'hi');
+    walk(cwdNode(),'',0);
+  },
+  find(args){
+    if(args.length<2){raw('Uso: find "texto" <archivo>','err');return;}
+    const q=args[0].replace(/^["']|["']$/g,'');
+    const node=cwdNode(); const f=node.children[args[1]];
+    if(!f||f.type!=='file'){raw('No se encuentra el archivo.','err');return;}
+    const lines=f.content.split('\n');
+    let any=false; lines.forEach((l,i)=>{ if(l.toLowerCase().includes(q.toLowerCase())){ raw((i+1)+': '+l); any=true; } });
+    if(!any) raw('No se encontro el texto.','dim');
+  },
+  findstr(a){ COMMANDS.find(a); },
+  ver(){ raw('Microsoft Windows [Version 10.0.22631.3737]'); },
+  date(){ raw(new Date().toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'})); },
+  time(){ raw(new Date().toLocaleTimeString('es-ES')); },
+  history(){ history.forEach((h,i)=>raw('  '+(i+1)+'  '+h)); },
+  where(args){ if(args[0]) raw('C:\\Windows\\System32\\'+args[0]+'.exe'); },
+  color(){ raw('color: usa color [atributos] (simulado)','dim'); },
+  title(){},
+  exit(){ raw('Sesion finalizada. Gracias por practicar!','hi'); },
+  ollama(args){
+    const sub=args[0];
+    if(sub==='list'){ raw('NAME            ID           SIZE     MODIFIED'); raw('glm-5.2:cloud   365c0bf3.... 5.2 GB   Hace 2 dias'); raw('llama3.1:8b     8adea2d8.... 4.7 GB   Hace 5 dias'); return; }
+    if(sub==='serve'){ raw('Listening on 127.0.0.1:11434 (version 0.3.0)','ok'); raw('Servidor de Ollama levantado. Ahora podes correr modelos.','dim'); return; }
+    if(sub==='run'){
+      if(!args[1]){raw('Uso: ollama run <modelo>','err');return;}
+      raw('>>> Cargando modelo '+args[1]+' ...','dim');
+      raw('>>> Hola! Soy '+args[1]+'. Preguntame algo (escribe /bye para salir).','ok');
+      return;
+    }
+    if(sub==='pull'){ raw('pulling '+args[1]+' ... (simulado) -> listo','ok'); return; }
+    raw('Comandos de ollama: list, run <modelo>, serve, pull <modelo>','dim');
+  },
+  claude(){
+    raw('',''); raw('  ✻ Bienvenido a Claude Code  ','hi');
+    raw('',''); raw('  /help para ver comandos · /clear para limpiar','dim');
+    raw('  Try: "crea un archivo hola.py"','dim'); raw('');
+  }
+};
+
+function listDir(){
+  const node=cwdNode(); if(!node){raw('Ruta invalida.','err');return;}
+  if(mode==='cmd'){
+    raw(' El volumen de la unidad C es OS','dim');
+    raw(' El numero de serie del volumen es A1B2-C3D4','dim');
+    raw('');
+    raw(' Directorio de '+cwd.join('\\'),'hi');
+    raw('');
+    const dirs=Object.keys(node.children).filter(n=>node.children[n].type==='dir').sort();
+    const files=Object.keys(node.children).filter(n=>node.children[n].type==='file').sort();
+    dirs.forEach(d=>{ const dt=new Date(); raw(dt.toLocaleDateString('es-ES')+'  <DIR>          '+d); });
+    files.forEach(f=>{ const dt=new Date(); const sz=String(node.children[f].content.length).padStart(14); raw(dt.toLocaleDateString('es-ES')+'  '+sz+' '+f); });
+    raw('');
+    raw('        '+dirs.length+' Dir(s)   '+files.length+' Archivo(s)','dim');
+  }else{
+    Object.keys(node.children).sort().forEach(n=>{
+      const c=node.children[n]; raw((c.type==='dir'?'d':'-')+'  '+n, c.type==='dir'?'dir':'');
+    });
+  }
+}
+function readFile(name){
+  if(!name){raw('Falta el nombre del archivo.','err');return;}
+  const node=cwdNode(); const f=node.children[name];
+  if(!f){raw('No se pudo encontrar el archivo.','err');return;}
+  if(f.type!=='file'){raw('Es una carpeta, no un archivo.','err');return;}
+  raw(f.content);
+}
+
+function run(text){
+  const t=text.trim();
+  if(!t) return;
+  const parts=t.split(/\s+/);
+  const cmd=parts[0].toLowerCase();
+  const args=parts.slice(1);
+  if(COMMANDS[cmd]){ try{ COMMANDS[cmd](args,parts.slice(1).join(' ')); }catch(e){ raw('Error: '+e.message,'err'); } }
+  else { raw("'"+cmd+"' no se reconoce como un comando interno o externo,\nprograma o archivo por lotes ejecutable.",'err'); }
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('term').className=m;
+  document.getElementById('bCmd').classList.toggle('active',m==='cmd');
+  document.getElementById('bPs').classList.toggle('active',m==='ps');
+  // remove current input line, reprint
+  const inp=document.getElementById('in'); if(inp) inp.parentElement.remove();
+  renderInputLine('');
+  document.getElementById('in').focus();
+}
+
+// boot
+renderBanner();
+renderInputLine('');
+term.addEventListener('click',()=>focusInput());
+</script>
+</body>
+</html>

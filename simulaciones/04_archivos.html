@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crear, copiar, mover y borrar archivos</title>
+<style>
+  :root{--green:#00ff7f;--sec:#31bcab;--dark:#1f1e1d;--bg:#0d1017;--panel:#141b2d;--border:#1e3a5f;--muted:#9ca3af;--red:#ff5252;--yellow:#ffbb33;--blue:#56b6ff}
+  *{box-sizing:border-box;font-family:'Nunito','Segoe UI',system-ui,sans-serif}
+  body{margin:0;background:var(--bg);color:#eaeaea;padding:1rem}
+  h1{font-size:1.2rem;color:var(--green);margin:0 0 .2rem;font-weight:800}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:1rem}
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media(max-width:760px){.layout{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .phead{background:#1a2340;padding:.5rem .8rem;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;font-weight:700}
+  .term{background:#0c0c0c;color:#fff;font-family:'Cascadia Code','Consolas',monospace;font-size:13.5px;padding:.9rem;min-height:280px;max-height:340px;overflow-y:auto;cursor:text}
+  .term .out{white-space:pre-wrap;word-break:break-word}
+  .err{color:var(--red)}.ok{color:var(--green)}.dim{color:var(--muted)}.hi{color:var(--yellow)}.info{color:var(--blue)}
+  .dir{color:var(--blue);font-weight:600}
+  .prompt{color:var(--green);font-weight:600}
+  .inputbar{display:flex;align-items:center;gap:.3rem;padding:.5rem .8rem;background:#0c0c0c;border-top:1px solid #1e3a5f}
+  .inputbar .prompt{color:var(--green);font-family:monospace;font-size:13.5px;white-space:nowrap}
+  .inputbar input{flex:1;background:transparent;border:none;color:#fff;font-family:'Cascadia Code','Consolas',monospace;font-size:13.5px;outline:none;min-width:0}
+  .toolbar{display:flex;gap:.4rem;flex-wrap:wrap;padding:.5rem .8rem;background:#1a2340;border-bottom:1px solid var(--border)}
+  .toolbar button{background:#0d1321;color:#cdd;border:1px solid #2a3142;border-radius:6px;padding:.3rem .55rem;cursor:pointer;font-size:11.5px;font-family:'Consolas',monospace}
+  .toolbar button:hover{border-color:var(--green);color:var(--green)}
+  .steps{padding:.7rem .9rem;font-size:13px;line-height:1.6}
+  .steps .step{display:flex;gap:.5rem;margin:.35rem 0;align-items:flex-start;color:#bcd}
+  .steps .step .n{background:#1e2a3f;color:var(--muted);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0}
+  .steps .step.done{color:#fff}
+  .steps .step.done .n{background:var(--green);color:#000}
+  .steps code{background:#0a0f1a;color:var(--green);padding:.1rem .35rem;border-radius:4px;font-family:'Consolas',monospace;font-size:12px}
+  .fsview{background:#0a0f1a;padding:.8rem;font-family:'Consolas',monospace;font-size:12.5px;color:#bcd;min-height:200px;max-height:260px;overflow-y:auto}
+  .fsview .item{padding:.12rem 0}
+  .fsview .folder{color:var(--blue);font-weight:600}
+  .fsview .file{color:#cdd}
+  .fsview .indent{margin-left:1.1rem}
+  .tip{background:#0d1f0d;border-left:3px solid var(--green);padding:.55rem .75rem;border-radius:6px;color:#bfe8c0;font-size:12px;margin:.5rem .9rem}
+  .warn{background:#2a1f0d;border-left:3px solid var(--yellow);padding:.55rem .75rem;border-radius:6px;color:#ffe;font-size:12px;margin:.5rem .9rem}
+  footer{font-size:10.5px;color:#666;text-align:right;margin-top:.8rem;border-top:1px solid var(--border);padding-top:.4rem}
+</style>
+</head>
+<body>
+<h1>🗂️ Crear, copiar, mover y borrar archivos</h1>
+<div class="sub">Practicá los comandos esenciales en una terminal segura. Creado por Ing Richard Oliveros — Thanos Corp SAS</div>
+
+<div class="layout">
+  <div class="panel">
+    <div class="phead"><span>💻 Terminal de práctica</span><span>C:\Users\Alumno</span></div>
+    <div class="toolbar">
+      <button onclick="quick('dir')">dir</button>
+      <button onclick="quick('mkdir Proyecto')">mkdir Proyecto</button>
+      <button onclick="quick('copy bienvenida.txt copia.txt')">copy → copia</button>
+      <button onclick="quick('move copia.txt Proyecto')">move → Proyecto</button>
+      <button onclick="quick('type apuntes.txt')">type apuntes</button>
+      <button onclick="quick('cd Proyecto')">cd Proyecto</button>
+      <button onclick="quick('cd ..')">cd ..</button>
+      <button onclick="quick('tree')">tree</button>
+      <button onclick="quick('cls')">cls</button>
+    </div>
+    <div class="term" id="term" onclick="document.getElementById('cmd').focus()"></div>
+    <div class="inputbar">
+      <span class="prompt" id="promptStr">C:\Users\Alumno&gt;</span>
+      <input id="cmd" autofocus spellcheck="false" placeholder="escribí un comando y Enter (ej: dir, help)">
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="phead"><span>📋 Tu misión paso a paso</span><span id="progTxt">0/5</span></div>
+    <div class="steps" id="steps">
+      <div class="step" data-key="mkdir Proyecto"><span class="n">1</span><div>Creá una carpeta: <code>mkdir Proyecto</code></div></div>
+      <div class="step" data-key="copy bienvenida.txt copia.txt"><span class="n">2</span><div>Duplicá un archivo: <code>copy bienvenida.txt copia.txt</code></div></div>
+      <div class="step" data-key="move copia.txt Proyecto"><span class="n">3</span><div>Movela a la carpeta: <code>move copia.txt Proyecto</code></div></div>
+      <div class="step" data-key="type apuntes.txt"><span class="n">4</span><div>Leé un archivo: <code>type apuntes.txt</code></div></div>
+      <div class="step" data-key="cd Proyecto"><span class="n">5</span><div>Entrá a la carpeta: <code>cd Proyecto</code></div></div>
+    </div>
+    <div class="tip"><b>Comandos:</b> help, dir, cd, mkdir, rmdir, copy, move, ren, del, type, cat, cls, tree</div>
+    <div class="warn"><b>Cuidado con <code style="color:#ff8">del</code>:</b> borra sin pedir confirmación.</div>
+    <div class="phead" style="border-top:1px solid var(--border)"><span>📁 Filesystem en vivo</span><span>mirá cómo cambia</span></div>
+    <div class="fsview" id="fsview"></div>
+  </div>
+</div>
+
+<footer>Creado por Ing Richard Oliveros — Thanos Corp SAS</footer>
+
+<script>
+const FS={'C:':{type:'d',children:{'Users':{type:'d',children:{'Alumno':{type:'d',children:{
+  'Documentos':{type:'d',children:{
+    'bienvenida.txt':{type:'f',content:'Hola! Archivo de texto.\nEstás en C:\\Users\\Alumno\\Documentos.'},
+    'apuntes.txt':{type:'f',content:'Apuntes clase 1:\n- pwd: PowerShell\n- dir: CMD\n- cd: ambas.'}
+  }},
+  'Descargas':{type:'d',children:{'reporte.pdf':{type:'f',content:'%PDF-1.4 (simulado)'}}},
+  'Proyectos':{type:'d',children:{'claude.md':{type:'f',content:'# Claude Code\nollama serve\nollama run glm-5.2:cloud\nclaude'}}}
+}}}}}}};
+let cwd=['C:','Users','Alumno'];
+let history=[]; let hIdx=-1;
+const term=document.getElementById('term');
+const input=document.getElementById('cmd');
+
+function nodeAt(p){let n=FS[p[0]];if(!n)return null;for(let i=1;i<p.length;i++){if(!n||n.type!=='d')return null;n=n.children[p[i]];if(!n)return null;}return n;}
+function cwdNode(){return nodeAt(cwd);}
+function promptStr(){return cwd.join('\\')+'>';}
+function raw(text,cls=''){const d=document.createElement('div');d.className='out'+(cls?(' '+cls):'');d.textContent=text;term.appendChild(d);term.scrollTop=term.scrollHeight;}
+function cls(){term.innerHTML='';}
+function renderPrompt(){document.getElementById('promptStr').textContent=promptStr();}
+function renderFS(){
+  const node=cwdNode(); const v=document.getElementById('fsview'); v.innerHTML='';
+  v.innerHTML='<div class="folder" style="margin-bottom:.3rem">📍 '+cwd.join('\\')+'</div>';
+  const show=(n,depth)=>{
+    Object.keys(n.children).sort().forEach(k=>{
+      const c=n.children[k];
+      const div=document.createElement('div'); div.className='item'+(depth?' indent':'')+' '+(c.type==='d'?'folder':'file');
+      div.textContent=(c.type==='d'?'📁 ':'📄 ')+k;
+      v.appendChild(div);
+      if(c.type==='d'&&depth<2) show(c,depth+1);
+    });
+  };
+  show(node,0);
+}
+function markStep(cmd){
+  let done=0;
+  document.querySelectorAll('#steps .step').forEach(s=>{
+    if(s.dataset.key.toLowerCase()===cmd.toLowerCase())s.classList.add('done');
+    if(s.classList.contains('done'))done++;
+  });
+  document.getElementById('progTxt').textContent=done+'/5';
+  if(done===5) raw('\n🎉 ¡Misión completa! Todos los comandos practicados.','ok');
+}
+
+const COMMANDS={
+  help(){raw('Comandos: dir, cd, mkdir, rmdir, copy, move, ren, del, type, cat, cls, tree, help','hi');},
+  dir(){list();}, ls(){list();}, cls(){cls();}, clear(){cls();},
+  cd(args){
+    if(!args[0]){raw(cwd.join('\\'));return;}
+    const t=args[0];
+    if(t==='\\'||t==='/'){cwd=['C:'];renderPrompt();renderFS();return;}
+    if(t==='..'){if(cwd.length>1)cwd.pop();renderPrompt();renderFS();return;}
+    if(t==='.')return;
+    const node=cwdNode(); const c=node.children[t];
+    if(c&&c.type==='d'){cwd.push(t);renderPrompt();renderFS();return;}
+    raw('No se encuentra la carpeta: '+t,'err');
+  },
+  mkdir(args){if(!args[0]){raw('Falta el nombre.','err');return;}const node=cwdNode();if(node.children[args[0]]){raw('Ya existe.','err');return;}node.children[args[0]]={type:'d',children:{}};renderFS();},
+  rmdir(args){if(!args[0]){raw('Falta el nombre.','err');return;}const node=cwdNode();const c=node.children[args[0]];if(!c){raw('No existe.','err');return;}if(c.type!=='d'){raw('No es carpeta.','err');return;}if(Object.keys(c.children).length){raw('La carpeta no está vacía.','err');return;}delete node.children[args[0]];renderFS();},
+  copy(args){if(args.length<2){raw('Uso: copy <origen> <destino>','err');return;}const node=cwdNode();const s=node.children[args[0]];if(!s||s.type!=='f'){raw('No se encuentra el archivo: '+args[0],'err');return;}node.children[args[1]]={type:'f',content:s.content};renderFS();raw('        1 archivo(s) copiado(s).','ok');},
+  move(args){if(args.length<2){raw('Uso: move <origen> <destino>','err');return;}const node=cwdNode();const s=node.children[args[0]];if(!s){raw('No existe: '+args[0],'err');return;}const dest=node.children[args[1]];if(dest&&dest.type==='d'){dest.children[args[0]]=s;delete node.children[args[0]];}else{node.children[args[1]]=s;delete node.children[args[0]];}renderFS();raw('        1 archivo(s) movido(s).','ok');},
+  ren(args){if(args.length<2){raw('Uso: ren <actual> <nuevo>','err');return;}const node=cwdNode();const s=node.children[args[0]];if(!s){raw('No existe.','err');return;}node.children[args[1]]=s;delete node.children[args[0]];renderFS();},
+  del(args){if(!args[0]){raw('Falta el archivo.','err');return;}const node=cwdNode();const c=node.children[args[0]];if(!c){raw('No se encuentra: '+args[0],'err');return;}if(c.type!=='f'){raw('No es archivo.','err');return;}delete node.children[args[0]];renderFS();raw('Archivo eliminado.','dim');},
+  rm(a){COMMANDS.del(a);},
+  type(args){read(args[0]);}, cat(args){read(args[0]);},
+  tree(){(function walk(n,pre,depth){if(depth>3)return;Object.keys(n.children).sort().forEach((k,i,arr)=>{const last=i===arr.length-1;raw(pre+(last?'└── ':'├── ')+k+(n.children[k].type==='d'?'\\':''),n.children[k].type==='d'?'dir':'');if(n.children[k].type==='d')walk(n.children[k],pre+(last?'    ':'│   '),depth+1);});})(cwdNode(),'',0);raw(cwd.join('\\'),'hi');}
+};
+function list(){
+  const node=cwdNode();
+  const dirs=Object.keys(node.children).filter(k=>node.children[k].type==='d').sort();
+  const files=Object.keys(node.children).filter(k=>node.children[k].type==='f').sort();
+  raw(' Directorio de '+cwd.join('\\'),'hi'); raw('');
+  dirs.forEach(d=>raw(new Date().toLocaleDateString('es-ES')+'  <DIR>          '+d));
+  files.forEach(f=>raw(new Date().toLocaleDateString('es-ES')+'  '+String(node.children[f].content.length).padStart(10)+' '+f));
+  raw(''); raw('        '+dirs.length+' Dir(s)  '+files.length+' Archivo(s)','dim');
+}
+function read(name){
+  if(!name){raw('Falta el nombre.','err');return;}
+  const node=cwdNode(); const f=node.children[name];
+  if(!f){raw('No se encuentra el archivo.','err');return;}
+  if(f.type!=='f'){raw('Es una carpeta, no un archivo.','err');return;}
+  raw(f.content,'ok');
+}
+function execute(text){
+  const t=text.trim(); if(!t)return;
+  raw(promptStr()+t);
+  history.push(t); hIdx=history.length;
+  const parts=t.split(/\s+/); const cmd=parts[0].toLowerCase(); const args=parts.slice(1);
+  markStep(t);
+  if(COMMANDS[cmd]){try{COMMANDS[cmd](args);}catch(e){raw('Error: '+e.message,'err');}}
+  else raw("'"+cmd+"' no se reconoce como comando.",'err');
+}
+input.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();execute(input.value);input.value='';}
+  if(e.key==='ArrowUp'){e.preventDefault();if(history.length&&hIdx>0){hIdx--;input.value=history[hIdx];}}
+  if(e.key==='ArrowDown'){e.preventDefault();if(hIdx<history.length-1){hIdx++;input.value=history[hIdx];}else{hIdx=history.length;input.value='';}}
+});
+function quick(s){execute(s);input.focus();}
+raw('Microsoft Windows [Version 10.0.22631.3737]','dim'); raw('');
+raw('💡 Escribí "help" o usá los botones de arriba. Empezá con: mkdir Proyecto','hi'); raw('');
+renderPrompt(); renderFS();
+</script>
+</body>
+</html>

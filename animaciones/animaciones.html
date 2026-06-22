@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animaciones — Cómo abrir la consola</title>
+<style>
+  :root{--green:#00ff7f;--sec:#31bcab;--dark:#1f1e1d;--light:#fafafa;--blue:#1a73e8}
+  *{box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{margin:0;background:#0f1115;color:#eaeaea;padding:1.2rem}
+  h1{font-size:1.25rem;color:var(--green);margin:0 0 .3rem}
+  .sub{color:#9ca3af;font-size:.85rem;margin-bottom:1rem}
+  .tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+  .tabs button{background:#1f232b;color:#ddd;border:1px solid #2a2f3a;border-radius:8px;padding:.5rem .9rem;cursor:pointer;font-size:.85rem}
+  .tabs button.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+  .scene{background:#161a21;border:1px solid #232834;border-radius:14px;padding:1.3rem;min-height:380px}
+  .scene[hidden]{display:none}
+  .btn{background:var(--green);color:#000;border:none;border-radius:8px;padding:.55rem 1.1rem;font-weight:700;cursor:pointer;font-size:.9rem}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.sec{background:#2a2f3a;color:#ddd;border:1px solid #3a414e}
+  .row{display:flex;gap:.6rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+  .kbd{display:inline-block;background:#222;color:#0f0;border:1px solid #3a414e;border-bottom:3px solid #3a414e;border-radius:6px;padding:.2rem .55rem;font-family:'Consolas',monospace;font-weight:700;min-width:34px;text-align:center}
+  .win{background:#1b1f27;border:1px solid #2a2f3a;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);overflow:hidden;margin:1rem 0}
+  .win .titlebar{background:#2a2f3a;color:#aaa;font-size:11px;padding:.4rem .7rem;display:flex;justify-content:space-between;align-items:center}
+  .win .body{padding:1rem;min-height:120px;position:relative}
+  /* Win+R dialog */
+  .run-box{background:#222731;border-radius:8px;padding:.8rem;max-width:340px;margin:1rem auto}
+  .run-box label{display:block;color:#bbb;font-size:11px;margin-bottom:.4rem}
+  .run-input{background:#0d1017;border:1px solid #3a414e;border-radius:6px;color:#fff;padding:.5rem;font-family:'Consolas',monospace;font-size:14px;width:100%;letter-spacing:1px}
+  .typing{color:var(--green)}
+  .cursor-blink{display:inline-block;width:8px;height:14px;background:var(--green);vertical-align:middle;animation:blink 1s steps(2) infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+  /* Desktop + right click */
+  .desktop{background:linear-gradient(135deg,#0a3d6b,#0a6b3d);min-height:200px;border-radius:8px;padding:1rem;position:relative;color:#fff}
+  .ctx{position:absolute;background:#2a2f3a;border:1px solid #444;border-radius:6px;padding:.3rem 0;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.6);min-width:180px}
+  .ctx div{padding:.35rem .8rem;cursor:pointer}
+  .ctx div:hover{background:var(--blue)}
+  /* Drag drop */
+  .drag-wrap{display:flex;gap:1.2rem;flex-wrap:wrap;align-items:stretch}
+  .folder{background:#1b1f27;border:1px solid #2a2f3a;border-radius:10px;padding:.8rem;flex:1;min-width:200px}
+  .file{background:#2a2f3a;border:1px solid #3a414e;border-radius:8px;padding:.6rem .8rem;cursor:grab;font-size:13px;color:#eaeaea;display:inline-flex;gap:.5rem;align-items:center;user-select:none;transition:transform .15s}
+  .file:active{cursor:grabbing}
+  .file.dragging{opacity:.4}
+  .term-drop{background:#0c0c0c;border:2px dashed #3a414e;border-radius:10px;padding:1rem;flex:1;min-width:240px;font-family:'Consolas',monospace;font-size:13px;color:#fff;min-height:160px;transition:border-color .2s}
+  .term-drop.over{border-color:var(--green);background:#0a1a0a}
+  .term-prompt{color:var(--green)}
+  .drop-hint{color:#9ca3af;font-size:11px;text-align:center;margin-top:.6rem}
+  .note{background:#0d1f0d;border-left:3px solid var(--green);padding:.6rem .8rem;border-radius:6px;color:#bfe;margin:.8rem 0;font-size:13px}
+  .step{display:flex;gap:.6rem;align-items:flex-start;margin:.5rem 0;color:#cdd}
+  .step .n{background:var(--green);color:#000;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+  .hi{color:var(--green);font-weight:600}
+  footer{font-size:10.5px;color:#666;text-align:right;margin-top:1rem;border-top:1px solid #232834;padding-top:.5rem}
+</style>
+</head>
+<body>
+<h1>🎬 Animaciones: Cómo abrir la consola y arrastrar archivos</h1>
+<div class="sub">Creado por Ing Richard Oliveros — Thanos Corp SAS</div>
+
+<div class="tabs">
+  <button class="active" onclick="show('winr',this)">1️⃣ Abrir CMD (Win+R)</button>
+  <button onclick="show('ps',this)">2️⃣ Abrir PowerShell</button>
+  <button onclick="show('drag',this)">3️⃣ Arrastrar archivo a la consola</button>
+</div>
+
+<!-- SCENE 1: Win+R -> cmd -->
+<div class="scene" id="winr">
+  <div class="step"><span class="n">1</span><div>Pulsa simultaneamente <span class="kbd">Win</span> + <span class="kbd">R</span> en tu teclado.</div></div>
+  <div class="step"><span class="n">2</span><div>Se abre la ventana <span class="hi">Ejecutar</span>. Escribe <span class="kbd">cmd</span> y presiona Enter.</div></div>
+  <div class="step"><span class="n">3</span><div>Se abre la <span class="hi">terminal negra de CMD</span>, lista para recibir comandos.</div></div>
+
+  <div class="row">
+    <button class="btn" onclick="playWinR()">▶ Reproducir animación</button>
+    <button class="btn sec" onclick="resetWinR()">↺ Reiniciar</button>
+  </div>
+
+  <div class="win">
+    <div class="titlebar"><span>Ejecutar</span><span>— ✕</span></div>
+    <div class="body">
+      <div class="run-box" id="runBox" hidden>
+        <label>Abrir:</label>
+        <div class="run-input" id="runInput"></div>
+      </div>
+      <div id="cmdWin" hidden>
+        <div style="background:#0c0c0c;color:#fff;padding:.7rem;border-radius:6px;font-family:Consolas,monospace;font-size:13px">
+          Microsoft Windows [Version 10.0.22631.3737]<br>
+          (c) Microsoft Corporation. Todos los derechos reservados.<br><br>
+          <span class="term-prompt">C:\Users\Alumno&gt;</span><span class="cursor-blink"></span>
+        </div>
+      </div>
+      <div id="winrHint" style="text-align:center;color:#666;font-size:12px;margin-top:1rem">Pulsa ▶ Reproducir para ver el paso a paso</div>
+    </div>
+  </div>
+  <div class="note">💡 <b>Truco:</b> también puedes abrir CMD desde el menú Inicio escribiendo "cmd" y dando Enter. Para abrir como administrador, clic derecho en el resultado → <b>Ejecutar como administrador</b>.</div>
+</div>
+
+<!-- SCENE 2: PowerShell -->
+<div class="scene" id="ps" hidden>
+  <div class="step"><span class="n">A</span><div>Con <span class="kbd">Win</span>+<span class="kbd">R</span> escribe <span class="kbd">powershell</span> y Enter.</div></div>
+  <div class="step"><span class="n">B</span><div>O bien: <span class="hi">clic derecho</span> en una carpeta vacía y elige <b>"Abrir en Terminal"</b> o <b>"Abrir ventana de PowerShell aquí"</b>.</div></div>
+
+  <div class="row">
+    <button class="btn" onclick="playPS()">▶ Ver PowerShell abierto</button>
+    <button class="btn sec" onclick="document.getElementById('psWin').hidden=true;document.getElementById('ctxDemo').hidden=false;document.getElementById('psHint').textContent=''">↺ Reiniciar</button>
+  </div>
+
+  <div id="ctxDemo">
+    <div class="desktop">
+      <div style="font-size:12px;color:#cde;margin-bottom:.4rem">Carpeta vacía — haz clic derecho en el área verde:</div>
+      <div style="height:130px;border-radius:6px;background:rgba(0,0,0,.15)" onclick="showCtx(event)" title="Clic derecho aquí"></div>
+      <div class="ctx" id="ctxMenu" hidden style="top:60px;left:30px">
+        <div>↩ Nuevo</div>
+        <div>📋 Pegar</div>
+        <div>⚙️ Abrir en Terminal <span style="color:#0f0">✓</span></div>
+        <div>🪟 Abrir ventana de PowerShell aquí</div>
+      </div>
+    </div>
+    <div class="drop-hint" id="psHint">👆 Clic en el área verde simula un clic derecho en una carpeta</div>
+  </div>
+
+  <div class="win" id="psWin" hidden>
+    <div class="titlebar" style="background:#012456"><span>Windows PowerShell</span><span>— ✕</span></div>
+    <div class="body" style="background:#012456;color:#fff;font-family:Consolas,monospace;font-size:13px">
+      Windows PowerShell<br>Copyright (C) Microsoft Corporation.<br><br>
+      <span class="term-prompt">PS C:\Users\Alumno&gt;</span><span class="cursor-blink"></span>
+    </div>
+  </div>
+  <div class="note">💡 <b>Diferencia clave:</b> PowerShell usa <span class="kbd">pwd</span> y <span class="kbd">ls</span> (estilo Linux); CMD usa <span class="kbd">cd</span> y <span class="kbd">dir</span>. Ambos sirven, PowerShell es más moderno.</div>
+</div>
+
+<!-- SCENE 3: Drag file to console -->
+<div class="scene" id="drag" hidden>
+  <div class="step"><span class="n">1</span><div>Arrastra un archivo desde el Explorador hacia la ventana de la consola.</div></div>
+  <div class="step"><span class="n">2</span><div>La consola <span class="hi">escribe automáticamente la ruta completa</span> del archivo. ¡No tenés que tipearla!</div></div>
+  <div class="step"><span class="n">3</span><div>Presioná Enter para ejecutar el comando con esa ruta.</div></div>
+
+  <div class="row">
+    <button class="btn sec" onclick="resetDrag()">↺ Reiniciar simulación</button>
+  </div>
+
+  <div class="drag-wrap">
+    <div class="folder">
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:.6rem">📁 Explorador de archivos — arrastrá:</div>
+      <div class="file" id="dragFile" draggable="true">📄 claude.md</div>
+      <div class="file" draggable="true" style="margin-top:.5rem">📄 apuntes.txt</div>
+      <div class="drop-hint" style="margin-top:.8rem">Arrastrá "claude.md" hacia la consola →</div>
+    </div>
+    <div class="term-drop" id="termDrop">
+      <div class="term-prompt">C:\Users\Alumno\Proyectos&gt;</div>
+      <div id="termOut" style="margin-top:.3rem;min-height:80px;color:#fff"></div>
+      <div class="drop-hint" id="dropHint">Soltá el archivo aquí…</div>
+    </div>
+  </div>
+  <div class="note">💡 <b>Por qué es útil:</b> en vez de copiar y pegar rutas larguísimas a mano (y equivocarte), el arrastre te da la ruta exacta al instante. Es uno de los trucos que la consola hace <b>mejor</b> que la interfaz gráfica.</div>
+</div>
+
+<footer>Creado por Ing Richard Oliveros — Thanos Corp SAS</footer>
+
+<script>
+function show(id,btn){
+  document.querySelectorAll('.scene').forEach(s=>s.hidden=true);
+  document.getElementById(id).hidden=false;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* Win+R animation */
+function resetWinR(){
+  document.getElementById('runBox').hidden=true;
+  document.getElementById('cmdWin').hidden=true;
+  document.getElementById('runInput').textContent='';
+  document.getElementById('winrHint').textContent='Pulsa ▶ Reproducir para ver el paso a paso';
+}
+function playWinR(){
+  resetWinR();
+  const hint=document.getElementById('winrHint');
+  const box=document.getElementById('runBox');
+  const inp=document.getElementById('runInput');
+  hint.textContent='Pulsando Win + R…';
+  setTimeout(()=>{ box.hidden=false; inp.innerHTML=''; hint.textContent='Escribiendo "cmd"…'; typeWord(inp,'cmd',()=>{ setTimeout(()=>{ box.hidden=true; document.getElementById('cmdWin').hidden=false; hint.textContent='✓ CMD abierto. Listo para comandos.'; },700); }); },900);
+}
+function typeWord(el,word,cb,i){
+  i=i||0; if(i>=word.length){ cb&&cb(); return; }
+  el.innerHTML=el.textContent+ '<span class="typing">'+word[i]+'</span>';
+  // keep typed prefix
+  setTimeout(()=>{
+    const prefix=(el.textContent).slice(0,i+1);
+    el.textContent=prefix;
+    typeWord(el,word,cb,i+1);
+  },160);
+}
+
+/* PowerShell */
+function showCtx(e){
+  e.preventDefault();
+  const m=document.getElementById('ctxMenu');
+  m.hidden=!m.hidden;
+  document.getElementById('psHint').textContent='Seleccioná "Abrir en Terminal"';
+}
+document.getElementById('ctxMenu').addEventListener('click',e=>{
+  if(e.target.textContent.includes('Terminal')||e.target.textContent.includes('PowerShell')){
+    document.getElementById('ctxMenu').hidden=true;
+    document.getElementById('ctxDemo').hidden=true;
+    document.getElementById('psWin').hidden=false;
+    document.getElementById('psHint').textContent='';
+  }
+});
+
+/* Drag-drop */
+const dragFile=document.getElementById('dragFile');
+const termDrop=document.getElementById('termDrop');
+const termOut=document.getElementById('termOut');
+let dragPath='C:\\Users\\Alumno\\Proyectos\\claude.md';
+
+dragFile.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain',dragPath); dragFile.classList.add('dragging'); });
+dragFile.addEventListener('dragend',()=>dragFile.classList.remove('dragging'));
+termDrop.addEventListener('dragover',e=>{ e.preventDefault(); termDrop.classList.add('over'); document.getElementById('dropHint').textContent='Soltá para insertar la ruta…'; });
+termDrop.addEventListener('dragleave',()=>{ termDrop.classList.remove('over'); document.getElementById('dropHint').textContent='Soltá el archivo aquí…'; });
+termDrop.addEventListener('drop',e=>{
+  e.preventDefault(); termDrop.classList.remove('over');
+  const path=e.dataTransfer.getData('text/plain')||dragPath;
+  document.getElementById('dropHint').textContent='';
+  termOut.innerHTML='<span style="color:#00ff7f">type </span>'+escapeHtml(path)+'<br><span style="color:#9ca3af">→ la ruta completa se escribió sola. Presioná Enter.</span>';
+});
+function resetDrag(){ termOut.innerHTML=''; document.getElementById('dropHint').textContent='Soltá el archivo aquí…'; }
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// allow click-to-drag fallback on touch
+dragFile.addEventListener('click',()=>{
+  const ev=new DataTransfer();
+  termOut.innerHTML='';
+  document.getElementById('dropHint').textContent='Soltá el archivo aquí…';
+  // simulate drop directly
+  termOut.innerHTML='<span style="color:#00ff7f">type </span>'+escapeHtml(dragPath)+'<br><span style="color:#9ca3af">→ (clic simulado) ruta insertada automáticamente.</span>';
+  document.getElementById('dropHint').textContent='';
+});
+</script>
+</body>
+</html>
